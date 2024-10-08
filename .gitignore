@@ -3,4 +3,4 @@ __pycache__/
 logs/
 checkpoints/
 results/base/
-inference_visualizations.ipynb
+inference_visualization.ipynb
