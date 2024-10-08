@@ -1,0 +1,132 @@
+experiment_name: base
+TICKER: AAPL
+FREQ: 1d
+scale_type: &st minmax
+
+seq_params:
+  seq_len: &sl 96
+  label_len: &ll 48
+  pred_len: &pl 24
+
+train_dataset:
+  type: StockDataset
+  module: src.dataset
+  args:
+    csv_path: data/AAPL/1d_minmax_train.csv
+    seq_len: *sl
+    label_len: *ll
+    pred_len: *pl
+
+val_dataset:
+  type: StockDataset
+  module: src.dataset
+  args:
+    csv_path: data/AAPL/1d_minmax_val.csv
+    seq_len: *sl
+    label_len: *ll
+    pred_len: *pl
+
+test_dataset:
+  type: StockDataset
+  module: src.dataset
+  args:
+    csv_path: data/AAPL/1d_minmax_test.csv
+    seq_len: *sl
+    label_len: *ll
+    pred_len: *pl
+
+train_loader:
+  type: DataLoader
+  module: torch.utils.data
+  args:
+    batch_size: 64
+    shuffle: True
+
+val_loader:
+  type: DataLoader
+  module: torch.utils.data
+  args:
+    batch_size: 64
+    shuffle: False
+
+test_loader:
+  type: DataLoader
+  module: torch.utils.data
+  args:
+    batch_size: 64
+    shuffle: False
+
+model:
+  type: Informer
+  module: src.informer.model
+  args:
+    enc_in: 8
+    dec_in: 8
+    c_out: 1
+    dropout: 0.1
+    factor: 5
+    d_model: 512
+    n_heads: 8
+    e_layers: 3
+    d_layers: 2
+    d_ff: 512
+    seq_len: *sl
+    label_len: *ll
+    out_len: *pl
+
+criterion:
+  type: RMSELoss
+  module: src.metrics
+
+optimizer:
+  type: Adam
+  module: torch.optim
+  args:
+    lr: 0.00001
+
+scheduler:
+  type: StepLR
+  module: torch.optim.lr_scheduler
+  args:
+    step_size: 1
+    gamma: 0.5
+
+learner:
+  type: InformerLearner
+  module: src.informer.learner
+  args:
+    info_csv: data/AAPL/1d_info.csv
+    scale_type: *st
+
+logger:
+  type: TensorBoardLogger
+  module: pytorch_lightning.loggers
+  args:
+    save_dir: logs
+    name: informer
+
+early_stopping:
+  type: EarlyStopping
+  module: pytorch_lightning.callbacks
+  args:
+    monitor: val_loss
+    patience: 10
+    mode: min
+
+model_checkpoint:
+  type: ModelCheckpoint
+  module: pytorch_lightning.callbacks
+  args:
+    dirpath: checkpoints/informer
+    filename: base-{epoch:02d}-{val_loss:.2f}
+    monitor: val_loss
+    mode: min
+    save_top_k: 1
+
+trainer:
+  type: Trainer
+  module: pytorch_lightning
+  args:
+    accelerator: gpu
+    max_epochs: 30
+    log_every_n_steps: 1
